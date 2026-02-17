@@ -24,12 +24,14 @@ def reload_config(env_vars):
 
 def test_photos_bucket_missing_raises_error():
     """PHOTOS_BUCKET is required — a missing value should raise KeyError."""
+    """PHOTOS_BUCKET is the only required variable and the app will crash without it."""
     with pytest.raises(KeyError):
         reload_config({})  # No PHOTOS_BUCKET set
 
 
 def test_all_variables_loaded_correctly():
     """All environment variables should load correctly when fully set."""
+    """confirms everything loads correctly when fully set."""
     config = reload_config({
         "PHOTOS_BUCKET": "my-test-bucket",
         "DATABASE_HOST": "db.example.com",
@@ -46,6 +48,7 @@ def test_all_variables_loaded_correctly():
 
 def test_optional_variables_all_default_to_none():
     """All optional variables should be None when not set."""
+    """confirms the app doesn't crash when optional database variables are absent."""
     config = reload_config({"PHOTOS_BUCKET": "my-test-bucket"})
     assert config.DATABASE_HOST is None
     assert config.DATABASE_USER is None
