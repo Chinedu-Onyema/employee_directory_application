@@ -44,7 +44,14 @@ def app():
         db_mock = MagicMock()
         sys.modules["database"] = db_mock
 
+        # Remove application from cache to force fresh import with mocked database
+        if "application" in sys.modules:
+            del sys.modules["application"]
+        
+        import importlib
         import application as app_module
+        importlib.reload(app_module)
+        
         flask_app = app_module.application
         flask_app.config["TESTING"] = True
         flask_app.config["WTF_CSRF_ENABLED"] = False
@@ -86,7 +93,8 @@ class TestGetInstanceDocument:
     """Unit tests for the EC2 metadata helper."""
 
     def test_returns_json_on_success(self):
-        with patch("requests.get") as mock_get:
+        with patch("requests.get") as mock_get, \
+             patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = {"availabilityZone": "us-west-2a", "instanceId": "i-abc"}
@@ -99,7 +107,8 @@ class TestGetInstanceDocument:
             assert result["instanceId"] == "i-abc"
 
     def test_falls_back_on_exception(self):
-        with patch("requests.get", side_effect=Exception("no network")):
+        with patch("requests.get", side_effect=Exception("no network")), \
+             patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
             import application as app_module
             result = app_module.get_instance_document()
             assert "instanceId" in result
@@ -108,7 +117,8 @@ class TestGetInstanceDocument:
     def test_handles_401_with_token_refresh(self):
         """When metadata returns 401, a token should be fetched and retried."""
         with patch("requests.get") as mock_get, \
-             patch("requests.put") as mock_put:
+             patch("requests.put") as mock_put, \
+             patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
 
             token_resp = MagicMock()
             token_resp.text = "fake-token"

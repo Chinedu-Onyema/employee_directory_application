@@ -23,8 +23,25 @@ def mock_dependencies():
     config_mock.DATABASE_DB_NAME = "test_db"
     sys.modules["config"] = config_mock
 
-    with patch("mysql.connector.connect") as mock_connect:
-        yield mock_connect
+    # Start the patch and keep it active
+    patcher = patch("mysql.connector.connect")
+    mock_connect = patcher.start()
+    
+    # Make sure database module is reloaded with patched mysql.connector
+    if "database" in sys.modules:
+        del sys.modules["database"]
+    
+    yield mock_connect
+    
+    patcher.stop()
+
+
+@pytest.fixture
+def mock_connect():
+    """Provide the mock_connect fixture for individual tests."""
+    # Use the already-running patch from mock_dependencies
+    with patch("mysql.connector.connect") as mock_conn:
+        yield mock_conn
 
 
 def get_database_module():

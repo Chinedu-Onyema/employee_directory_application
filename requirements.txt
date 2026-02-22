@@ -4,8 +4,8 @@ mysql_connector_python
 boto3
 pillow
 requests
-json
 pytest
 pytest-cov
 pylint
-sys
+black
+
