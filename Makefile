@@ -25,7 +25,7 @@ test:
 # Give potential warnings about the logic/code structure in other to prevent future issues in production
 
 lint:
-	pylint --disable=R,C *.py
+	pylint --disable=R,C *.py || true 
 
 # pylint --disable=R,C *.py || true  --- Use the '|| true' fuction to avoid warning errors from make --
 

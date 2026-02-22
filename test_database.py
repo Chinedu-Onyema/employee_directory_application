@@ -6,12 +6,12 @@ requiring a real database connection.
 
 import pytest
 import sys
-from unittest.mock import patch, MagicMock, call
-
+from unittest.mock import patch, MagicMock
 
 # ---------------------------------------------------------------------------
 # Setup - mock dependencies before importing database module
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def mock_dependencies():
@@ -26,13 +26,13 @@ def mock_dependencies():
     # Start the patch and keep it active
     patcher = patch("mysql.connector.connect")
     mock_connect = patcher.start()
-    
+
     # Make sure database module is reloaded with patched mysql.connector
     if "database" in sys.modules:
         del sys.modules["database"]
-    
+
     yield mock_connect
-    
+
     patcher.stop()
 
 
@@ -49,6 +49,7 @@ def get_database_module():
     if "database" in sys.modules:
         del sys.modules["database"]
     import database
+
     return database
 
 
@@ -63,6 +64,7 @@ def make_mock_connection():
 # ---------------------------------------------------------------------------
 # get_database_connection
 # ---------------------------------------------------------------------------
+
 
 class TestGetDatabaseConnection:
 
@@ -79,7 +81,7 @@ class TestGetDatabaseConnection:
             password="test_password",
             host="localhost",
             database="test_db",
-            use_pure=True
+            use_pure=True,
         )
 
     def test_returns_connection_object(self, mock_connect):
@@ -97,6 +99,7 @@ class TestGetDatabaseConnection:
 # list_employees
 # ---------------------------------------------------------------------------
 
+
 class TestListEmployees:
 
     def test_returns_all_employees(self, mock_connect):
@@ -104,10 +107,22 @@ class TestListEmployees:
         mock_conn, mock_cursor = make_mock_connection()
         mock_connect.return_value = mock_conn
         mock_cursor.fetchall.return_value = [
-            {"id": 1, "full_name": "Alice", "location": "NYC",
-             "job_title": "Engineer", "badges": "coffee", "object_key": None},
-            {"id": 2, "full_name": "Bob", "location": "LA",
-             "job_title": "Designer", "badges": "", "object_key": None},
+            {
+                "id": 1,
+                "full_name": "Alice",
+                "location": "NYC",
+                "job_title": "Engineer",
+                "badges": "coffee",
+                "object_key": None,
+            },
+            {
+                "id": 2,
+                "full_name": "Bob",
+                "location": "LA",
+                "job_title": "Designer",
+                "badges": "",
+                "object_key": None,
+            },
         ]
 
         database = get_database_module()
@@ -159,6 +174,7 @@ class TestListEmployees:
 # load_employee
 # ---------------------------------------------------------------------------
 
+
 class TestLoadEmployee:
 
     def test_returns_correct_employee(self, mock_connect):
@@ -166,8 +182,12 @@ class TestLoadEmployee:
         mock_conn, mock_cursor = make_mock_connection()
         mock_connect.return_value = mock_conn
         mock_cursor.fetchone.return_value = {
-            "id": 1, "full_name": "Alice", "location": "NYC",
-            "job_title": "Engineer", "badges": "coffee", "object_key": None
+            "id": 1,
+            "full_name": "Alice",
+            "location": "NYC",
+            "job_title": "Engineer",
+            "badges": "coffee",
+            "object_key": None,
         }
 
         database = get_database_module()
@@ -218,6 +238,7 @@ class TestLoadEmployee:
 # add_employee
 # ---------------------------------------------------------------------------
 
+
 class TestAddEmployee:
 
     def test_inserts_employee_with_correct_values(self, mock_connect):
@@ -259,6 +280,7 @@ class TestAddEmployee:
 # update_employee
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateEmployee:
 
     def test_updates_employee_with_object_key(self, mock_connect):
@@ -272,7 +294,14 @@ class TestUpdateEmployee:
         executed_sql = mock_cursor.execute.call_args[0][0]
         executed_params = mock_cursor.execute.call_args[0][1]
         assert "object_key" in executed_sql
-        assert executed_params == ("pic/new.png", "Alice", "NYC", "Engineer", "trophy", 1)
+        assert executed_params == (
+            "pic/new.png",
+            "Alice",
+            "NYC",
+            "Engineer",
+            "trophy",
+            1,
+        )
 
     def test_updates_employee_without_object_key(self, mock_connect):
         """Should exclude object_key from the UPDATE when it is None."""
@@ -312,6 +341,7 @@ class TestUpdateEmployee:
 # ---------------------------------------------------------------------------
 # delete_employee
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteEmployee:
 

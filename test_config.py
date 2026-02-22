@@ -15,10 +15,12 @@ def reload_config(env_vars):
     environment variables using patch.dict.
     """
     from unittest.mock import patch
+
     with patch.dict("os.environ", env_vars, clear=True):
         if "config" in sys.modules:
             del sys.modules["config"]
         import config
+
         return config
 
 
@@ -32,13 +34,15 @@ def test_photos_bucket_missing_raises_error():
 def test_all_variables_loaded_correctly():
     """All environment variables should load correctly when fully set."""
     """confirms everything loads correctly when fully set."""
-    config = reload_config({
-        "PHOTOS_BUCKET": "my-test-bucket",
-        "DATABASE_HOST": "db.example.com",
-        "DATABASE_USER": "admin",
-        "DATABASE_PASSWORD": "supersecret",
-        "DATABASE_DB_NAME": "employees"
-    })
+    config = reload_config(
+        {
+            "PHOTOS_BUCKET": "my-test-bucket",
+            "DATABASE_HOST": "db.example.com",
+            "DATABASE_USER": "admin",
+            "DATABASE_PASSWORD": "supersecret",
+            "DATABASE_DB_NAME": "employees",
+        }
+    )
     assert config.PHOTOS_BUCKET == "my-test-bucket"
     assert config.DATABASE_HOST == "db.example.com"
     assert config.DATABASE_USER == "admin"

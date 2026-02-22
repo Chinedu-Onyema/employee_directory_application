@@ -4,24 +4,22 @@ Uses pytest with unittest.mock to isolate external dependencies
 (AWS S3, DynamoDB, EC2 metadata, database, subprocess).
 """
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 from io import BytesIO
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def app():
     """Create and configure a test instance of the Flask application."""
     # Patch all external dependencies before importing the application module
-    with patch("requests.get") as mock_get, \
-         patch("requests.put"), \
-         patch("boto3.client"), \
-         patch.dict("os.environ", {}, clear=False):
+    with patch("requests.get") as mock_get, patch("requests.put"), patch(
+        "boto3.client"
+    ), patch.dict("os.environ", {}, clear=False):
 
         # Make the EC2 instance-identity call return a fake document
         mock_response = MagicMock()
@@ -34,6 +32,7 @@ def app():
 
         # Provide a minimal config before importing the app
         import sys
+
         config_mock = MagicMock()
         config_mock.FLASK_SECRET = "test-secret-key"
         config_mock.PHOTOS_BUCKET = "test-bucket"
@@ -47,11 +46,12 @@ def app():
         # Remove application from cache to force fresh import with mocked database
         if "application" in sys.modules:
             del sys.modules["application"]
-        
+
         import importlib
         import application as app_module
+
         importlib.reload(app_module)
-        
+
         flask_app = app_module.application
         flask_app.config["TESTING"] = True
         flask_app.config["WTF_CSRF_ENABLED"] = False
@@ -69,6 +69,7 @@ def client(app):
 # ---------------------------------------------------------------------------
 # Helper builders
 # ---------------------------------------------------------------------------
+
 
 def make_employee(**kwargs):
     """Return a minimal employee dict, with defaults that can be overridden."""
@@ -89,36 +90,43 @@ def make_employee(**kwargs):
 # get_instance_document
 # ---------------------------------------------------------------------------
 
+
 class TestGetInstanceDocument:
     """Unit tests for the EC2 metadata helper."""
 
     def test_returns_json_on_success(self):
-        with patch("requests.get") as mock_get, \
-             patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
+        with patch("requests.get") as mock_get, patch.dict(
+            "os.environ", {"PHOTOS_BUCKET": "test-bucket"}
+        ):
             mock_resp = MagicMock()
             mock_resp.status_code = 200
-            mock_resp.json.return_value = {"availabilityZone": "us-west-2a", "instanceId": "i-abc"}
+            mock_resp.json.return_value = {
+                "availabilityZone": "us-west-2a",
+                "instanceId": "i-abc",
+            }
             mock_get.return_value = mock_resp
 
             # Import fresh to exercise the function in isolation
-            import importlib
             import application as app_module
+
             result = app_module.get_instance_document()
             assert result["instanceId"] == "i-abc"
 
     def test_falls_back_on_exception(self):
-        with patch("requests.get", side_effect=Exception("no network")), \
-             patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
+        with patch("requests.get", side_effect=Exception("no network")), patch.dict(
+            "os.environ", {"PHOTOS_BUCKET": "test-bucket"}
+        ):
             import application as app_module
+
             result = app_module.get_instance_document()
             assert "instanceId" in result
             assert result["availabilityZone"] == "us-fake-1a"
 
     def test_handles_401_with_token_refresh(self):
         """When metadata returns 401, a token should be fetched and retried."""
-        with patch("requests.get") as mock_get, \
-             patch("requests.put") as mock_put, \
-             patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
+        with patch("requests.get") as mock_get, patch(
+            "requests.put"
+        ) as mock_put, patch.dict("os.environ", {"PHOTOS_BUCKET": "test-bucket"}):
 
             token_resp = MagicMock()
             token_resp.text = "fake-token"
@@ -129,12 +137,16 @@ class TestGetInstanceDocument:
 
             auth_resp = MagicMock()
             auth_resp.status_code = 200
-            auth_resp.json.return_value = {"availabilityZone": "eu-west-1a", "instanceId": "i-eu"}
+            auth_resp.json.return_value = {
+                "availabilityZone": "eu-west-1a",
+                "instanceId": "i-eu",
+            }
             auth_resp.raise_for_status = MagicMock()
 
             mock_get.side_effect = [unauth_resp, auth_resp]
 
             import application as app_module
+
             result = app_module.get_instance_document()
             assert result["instanceId"] == "i-eu"
             # Token endpoint should have been called once
@@ -144,6 +156,7 @@ class TestGetInstanceDocument:
 # ---------------------------------------------------------------------------
 # Home route  /
 # ---------------------------------------------------------------------------
+
 
 class TestHomeRoute:
 
@@ -155,7 +168,10 @@ class TestHomeRoute:
 
     def test_home_with_employees(self, client):
         c, db_mock = client
-        employees = [make_employee(id="1", full_name="Alice"), make_employee(id="2", full_name="Bob")]
+        employees = [
+            make_employee(id="1", full_name="Alice"),
+            make_employee(id="2", full_name="Bob"),
+        ]
         db_mock.list_employees.return_value = employees
 
         with patch("boto3.client") as mock_boto:
@@ -201,6 +217,7 @@ class TestHomeRoute:
 # Add route  /add
 # ---------------------------------------------------------------------------
 
+
 class TestAddRoute:
 
     def test_add_page_loads(self, client):
@@ -217,6 +234,7 @@ class TestAddRoute:
 # ---------------------------------------------------------------------------
 # Edit route  /edit/<employee_id>
 # ---------------------------------------------------------------------------
+
 
 class TestEditRoute:
 
@@ -245,6 +263,7 @@ class TestEditRoute:
 # ---------------------------------------------------------------------------
 # Save route  /save  (POST)
 # ---------------------------------------------------------------------------
+
 
 class TestSaveRoute:
 
@@ -282,6 +301,7 @@ class TestSaveRoute:
 
     def test_save_with_photo_upload(self, client):
         import sys
+
         util_mock = sys.modules["util"]
         util_mock.resize_image.return_value = b"fake-image-bytes"
         util_mock.random_hex_bytes.return_value = "deadbeef"
@@ -311,7 +331,7 @@ class TestSaveRoute:
     def test_save_invalid_form_returns_error(self, client):
         """Missing required fields should not call database helpers."""
         c, db_mock = client
-        resp = c.post("/save", data={"full_name": ""}, follow_redirects=True)
+        c.post("/save", data={"full_name": ""}, follow_redirects=True)
         db_mock.add_employee.assert_not_called()
         db_mock.update_employee.assert_not_called()
 
@@ -319,6 +339,7 @@ class TestSaveRoute:
 # ---------------------------------------------------------------------------
 # View route  /employee/<employee_id>
 # ---------------------------------------------------------------------------
+
 
 class TestViewRoute:
 
@@ -333,7 +354,9 @@ class TestViewRoute:
 
     def test_view_employee_with_photo(self, client):
         c, db_mock = client
-        db_mock.load_employee.return_value = make_employee(id="6", object_key="employee_pic/x.png")
+        db_mock.load_employee.return_value = make_employee(
+            id="6", object_key="employee_pic/x.png"
+        )
 
         with patch("boto3.client") as mock_boto:
             s3 = MagicMock()
@@ -361,6 +384,7 @@ class TestViewRoute:
 # Delete route  /delete/<employee_id>
 # ---------------------------------------------------------------------------
 
+
 class TestDeleteRoute:
 
     def test_delete_employee(self, client):
@@ -382,6 +406,7 @@ class TestDeleteRoute:
 # Info route  /info
 # ---------------------------------------------------------------------------
 
+
 class TestInfoRoute:
 
     def test_info_page_loads(self, client):
@@ -400,6 +425,7 @@ class TestInfoRoute:
 # Stress CPU route  /info/stress_cpu/<seconds>
 # ---------------------------------------------------------------------------
 
+
 class TestStressRoute:
 
     def test_stress_calls_subprocess(self, client):
@@ -408,7 +434,9 @@ class TestStressRoute:
             mock_popen.return_value = MagicMock()
             resp = c.get("/info/stress_cpu/60", follow_redirects=True)
             assert resp.status_code == 200
-            mock_popen.assert_called_once_with(["stress", "--cpu", "8", "--timeout", "60"])
+            mock_popen.assert_called_once_with(
+                ["stress", "--cpu", "8", "--timeout", "60"]
+            )
 
     def test_stress_redirects_to_info(self, client):
         c, _ = client
@@ -421,6 +449,7 @@ class TestStressRoute:
 # ---------------------------------------------------------------------------
 # Before-request globals
 # ---------------------------------------------------------------------------
+
 
 class TestBeforeRequest:
 
@@ -437,11 +466,14 @@ class TestBeforeRequest:
 # Badge rendering
 # ---------------------------------------------------------------------------
 
+
 class TestBadges:
 
     def test_badges_appear_on_employee_view(self, client):
         c, db_mock = client
-        db_mock.load_employee.return_value = make_employee(id="10", badges="coffee,trophy")
+        db_mock.load_employee.return_value = make_employee(
+            id="10", badges="coffee,trophy"
+        )
 
         with patch("boto3.client"):
             resp = c.get("/employee/10")

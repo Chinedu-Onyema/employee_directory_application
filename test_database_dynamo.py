@@ -8,10 +8,10 @@ import pytest
 import sys
 from unittest.mock import patch, MagicMock
 
-
 # ---------------------------------------------------------------------------
 # Setup - mock boto3 before importing the module
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def mock_boto3():
@@ -25,6 +25,7 @@ def get_dynamo_module():
     if "database_dynamo" in sys.modules:
         del sys.modules["database_dynamo"]
     import database_dynamo
+
     return database_dynamo
 
 
@@ -41,6 +42,7 @@ def make_mock_table(mock_resource):
 # list_employees
 # ---------------------------------------------------------------------------
 
+
 class TestListEmployees:
 
     def test_returns_all_employees(self, mock_boto3):
@@ -48,10 +50,20 @@ class TestListEmployees:
         mock_table = make_mock_table(mock_boto3)
         mock_table.scan.return_value = {
             "Items": [
-                {"id": "1", "full_name": "Alice", "location": "NYC",
-                 "job_title": "Engineer", "badges": ["coffee"]},
-                {"id": "2", "full_name": "Bob", "location": "LA",
-                 "job_title": "Designer", "badges": []},
+                {
+                    "id": "1",
+                    "full_name": "Alice",
+                    "location": "NYC",
+                    "job_title": "Engineer",
+                    "badges": ["coffee"],
+                },
+                {
+                    "id": "2",
+                    "full_name": "Bob",
+                    "location": "LA",
+                    "job_title": "Designer",
+                    "badges": [],
+                },
             ]
         }
 
@@ -97,14 +109,20 @@ class TestListEmployees:
 # load_employee
 # ---------------------------------------------------------------------------
 
+
 class TestLoadEmployee:
 
     def test_returns_correct_employee(self, mock_boto3):
         """Should return the employee matching the given ID."""
         mock_table = make_mock_table(mock_boto3)
         mock_table.get_item.return_value = {
-            "Item": {"id": "abc", "full_name": "Alice", "location": "NYC",
-                     "job_title": "Engineer", "badges": ["coffee"]}
+            "Item": {
+                "id": "abc",
+                "full_name": "Alice",
+                "location": "NYC",
+                "job_title": "Engineer",
+                "badges": ["coffee"],
+            }
         }
 
         db = get_dynamo_module()
@@ -136,6 +154,7 @@ class TestLoadEmployee:
 # ---------------------------------------------------------------------------
 # add_employee
 # ---------------------------------------------------------------------------
+
 
 class TestAddEmployee:
 
@@ -209,6 +228,7 @@ class TestAddEmployee:
 # update_employee
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateEmployee:
 
     def test_updates_employee_with_object_key(self, mock_boto3):
@@ -241,7 +261,10 @@ class TestUpdateEmployee:
         db.update_employee("1", None, "Alice", "NYC", "Engineer", "coffee,trophy")
 
         update_call = mock_table.update_item.call_args[1]
-        assert update_call["AttributeUpdates"]["badges"]["Value"] == ["coffee", "trophy"]
+        assert update_call["AttributeUpdates"]["badges"]["Value"] == [
+            "coffee",
+            "trophy",
+        ]
         assert update_call["AttributeUpdates"]["badges"]["Action"] == "PUT"
 
     def test_deletes_badges_when_empty(self, mock_boto3):
@@ -268,6 +291,7 @@ class TestUpdateEmployee:
 # ---------------------------------------------------------------------------
 # delete_employee
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteEmployee:
 
